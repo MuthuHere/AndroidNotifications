@@ -62,9 +62,6 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        //to get fireBase ID
-        getFireBaseToken()
-
         //init FireBase Instance
         auth = FirebaseAuth.getInstance()
 
@@ -117,17 +114,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun getFireBaseToken() {
-
-        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.i("M_TOKEN==>", "" + task.result?.token)
-            }
-        }
-
-    }
-
-
     /**
      * Check the version of the device and
      * create the channel if it is Oreo or above Oreo
@@ -147,22 +133,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    /**
-     * function used to show simple notification when it gets triggered
-     */
-    private fun showNotification() {
-
-        val notificationCompat = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Muthu's Notification Title")
-            .setContentText("Hey Guys really I'm working!!")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT).build()
-
-        val notificationManager = NotificationManagerCompat.from(this)
-            .notify(1, notificationCompat)
-
-    }
-
 
     private fun gotoProfileActivity() {
         startActivity(
@@ -171,6 +141,13 @@ class MainActivity : AppCompatActivity() {
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         )
 
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (auth.currentUser != null) {
+            gotoProfileActivity()
+        }
     }
 }
 
