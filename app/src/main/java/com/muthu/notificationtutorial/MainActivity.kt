@@ -2,6 +2,7 @@ package com.muthu.notificationtutorial
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
@@ -9,17 +10,31 @@ import android.support.design.widget.Snackbar
 import android.support.v4.app.NotificationCompat
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.Toast
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.iid.FirebaseInstanceId
+import com.google.firebase.iid.InstanceIdResult
 
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
+import kotlin.properties.Delegates
 
 class MainActivity : AppCompatActivity() {
 
-    val CHANNEL_ID = "notify_test"
-    val CHANNEL_NAME = "Notification Test"
-    val CHANNEL_DESC = "MuthuHere's Notifications"
+    //notification channel
+    private val CHANNEL_ID = "notify_test"
+    private val CHANNEL_NAME = "Notification Test"
+    private val CHANNEL_DESC = "MuthuHere's Notifications"
+
+    //fireBase
+    private var auth: FirebaseAuth by Delegates.notNull()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,11 +45,85 @@ class MainActivity : AppCompatActivity() {
         createChannel()
 
 
-// button click event for simple notification
+        // button click event for simple notification
         btnCreateNotification.setOnClickListener {
-            showNotification()
+
+            val email = etEmail.text.toString()
+            val pwd = etPassword.text.toString()
+
+            if (email.isNullOrEmpty() || pwd.isNullOrEmpty()) {
+                Toast.makeText(this@MainActivity, "Email & Password Mandatory", Toast.LENGTH_SHORT).show()
+
+                return@setOnClickListener
+            } else {
+                createFireBaseUser(email, pwd)
+            }
+
         }
 
+
+        //to get fireBase ID
+        getFireBaseToken()
+
+        //init FireBase Instance
+        auth = FirebaseAuth.getInstance()
+
+
+    }
+
+    private fun createFireBaseUser(email: String, pwd: String) {
+        progressBar.visibility = View.VISIBLE
+
+        auth.createUserWithEmailAndPassword(email, pwd).addOnCompleteListener { task ->
+
+
+            //registration success
+            if (task.isSuccessful) {
+                progressBar.visibility = View.GONE
+                gotoProfileActivity()
+            } else {
+                // if email already exist
+                if (task.exception is FirebaseAuthUserCollisionException) {
+                    //check user login credentials
+                    makeUserLogin(email, pwd)
+                } else {
+                    //unknown error
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(this@MainActivity, task.exception.toString(), Toast.LENGTH_SHORT).show()
+
+                }
+            }
+
+        }
+
+    }
+
+
+    /**
+     * if user is existing user then make auto sign-in with fireBase again
+     */
+    private fun makeUserLogin(email: String, pwd: String) {
+
+        auth.signInWithEmailAndPassword(email, pwd).addOnCompleteListener { task ->
+            progressBar.visibility = View.GONE
+            if (task.isSuccessful) {
+                gotoProfileActivity()
+            } else {
+                Toast.makeText(this@MainActivity, task.exception.toString(), Toast.LENGTH_SHORT).show()
+
+            }
+        }
+
+    }
+
+
+    private fun getFireBaseToken() {
+
+        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.i("M_TOKEN==>", "" + task.result?.token)
+            }
+        }
 
     }
 
@@ -74,4 +163,14 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+
+    private fun gotoProfileActivity() {
+        startActivity(
+            Intent(this, ProfileActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        )
+
+    }
 }
+
